@@ -1,0 +1,39 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: zhangweitao
+ * Date: 19-3-10
+ * Time: 下午2:36
+ */
+
+namespace Application\Tcp;
+
+
+use EasySwoole\Socket\AbstractInterface\ParserInterface;
+use EasySwoole\Socket\Bean\Caller;
+use EasySwoole\Socket\Bean\Response;
+
+class Parse implements ParserInterface
+{
+
+    public function decode($raw, $client): ?Caller
+    {
+        $data = substr($raw, '4');
+        //为了方便,我们将json字符串作为协议标准
+        $data = json_decode($data, true);
+        $bean = new Caller();
+        $controller = !empty($data['controller']) ? $data['controller'] : 'Index';
+        $action = !empty($data['action']) ? $data['action'] : 'index';
+        $param = !empty($data['param']) ? $data['param'] : [];
+        $controller = "Application\\Tcp\\Controller\\".ucfirst($controller);
+        $bean->setControllerClass($controller);
+        $bean->setAction($action);
+        $bean->setArgs($param);
+        return $bean;
+    }
+
+    public function encode(Response $response, $client): ?string
+    {
+        return pack('N', strlen($response->getMessage())) . $response->getMessage();
+    }
+}
