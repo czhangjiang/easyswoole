@@ -35,7 +35,6 @@ class Chair extends Controller
         $response = [
             'code' => 1,
             'message' => '设备连接成功',
-            'data' => []
         ];
         $param = $this->caller()->getArgs();
         if(!isset($param['deviceId'])) {
@@ -43,7 +42,6 @@ class Chair extends Controller
             $response['message'] = '设备ID不能为空';
             $this->response()->setMessage(json_encode($response));
         }
-
         $deviceId = $param['deviceId'];
         $data = MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId){
             $good = new Goods($mysqlObject);
@@ -53,8 +51,12 @@ class Chair extends Controller
 
             return $good->getOne($goodBean);
         });
-        $response['data'] = $data;
-        $this->response()->setMessage(json_encode($response));
+
+        if (empty($data)) {
+            $response['code'] = -1;
+            $response['message'] = '设备不存在';
+        }
+        return $this->response()->setMessage($this->encrypt(json_encode($response)));
     }
 
     public function test()
