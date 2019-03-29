@@ -16,14 +16,14 @@ go(function () {
             'package_body_offset'   => 4,
         ]
     );
-    if (!$client->connect('127.0.0.1', 8888, 0.5)) {
+    if (!$client->connect('120.24.50.248', 8888, 0.5)) {
         exit("connect failed. Error: {$client->errCode}\n");
     }
     $data = [
         'controller' => 'Chair',
-        'action'     => 'test',
+        'action'     => 'start',
         'param'      => [
-            'deviceId' => 'JS004311'
+            'deviceId' => 'JS00431'
         ],
     ];
     $str = json_encode($data);
