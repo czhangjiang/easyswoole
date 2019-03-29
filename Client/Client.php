@@ -16,21 +16,26 @@ go(function () {
             'package_body_offset'   => 4,
         ]
     );
-    if (!$client->connect('127.0.0.1', 9502, 0.5)) {
+    if (!$client->connect('127.0.0.1', 8888, 0.5)) {
         exit("connect failed. Error: {$client->errCode}\n");
     }
     $data = [
         'controller' => 'Chair',
-        'action'     => 'start',
+        'action'     => 'test',
         'param'      => [
             'deviceId' => 'JS004311'
         ],
     ];
     $str = json_encode($data);
+    $key = '1234567891234567';
+    $cipher = 'AES-128-CBC';
+    $encrypter = new \Illuminate\Encryption\Encrypter($key, $cipher);
+    $str = $encrypter->encryptString($str);
     $client->send(encode($str));
     $data = $client->recv();//服务器已经做了pack处理
     $data = decode($data);//需要自己剪切解析数据
     echo "服务端回复: $data \n";
+    echo $encrypter->decryptString($data);
 //    $client->close();
 });
 /**

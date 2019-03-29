@@ -9,9 +9,11 @@
 namespace Application\Tcp;
 
 
+use EasySwoole\EasySwoole\Config;
 use EasySwoole\Socket\AbstractInterface\ParserInterface;
 use EasySwoole\Socket\Bean\Caller;
 use EasySwoole\Socket\Bean\Response;
+use Illuminate\Encryption\Encrypter;
 
 class Parse implements ParserInterface
 {
@@ -19,6 +21,12 @@ class Parse implements ParserInterface
     public function decode($raw, $client): ?Caller
     {
         $data = substr($raw, '4');
+
+        $key = Config::getInstance()->getConf('KEY');
+        $cipher = Config::getInstance()->getConf('CIPHER');
+        $encrypter = new Encrypter($key, $cipher);
+        $data = $encrypter->decryptString($data);
+
         //为了方便,我们将json字符串作为协议标准
         $data = json_decode($data, true);
         $bean = new Caller();

@@ -12,7 +12,9 @@ use Application\Model\Goods\GoodBean;
 use Application\Model\Goods\Goods;
 use Application\Util\Pool\MysqlObject;
 use Application\Util\Pool\MysqlPool;
+use EasySwoole\EasySwoole\Config;
 use EasySwoole\Socket\AbstractInterface\Controller;
+use Illuminate\Encryption\Encrypter;
 
 
 class Chair extends Controller
@@ -53,6 +55,27 @@ class Chair extends Controller
         });
         $response['data'] = $data;
         $this->response()->setMessage(json_encode($response));
+    }
+
+    public function test()
+    {
+        $response = [
+            'code' => 1,
+            'message' => '设备连接成功',
+            'data' => []
+        ];
+
+        return $this->response()->setMessage($this->encrypt(json_encode($response)));
+
+    }
+
+    public function encrypt($string)
+    {
+        $key = Config::getInstance()->getConf('KEY');
+        $cipher = Config::getInstance()->getConf('CIPHER');
+
+        $encrypter = new Encrypter($key, $cipher);
+        return $encrypter->encryptString($string);
     }
 
 }
