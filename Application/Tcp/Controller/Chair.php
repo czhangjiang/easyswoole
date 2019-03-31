@@ -12,13 +12,33 @@ use Application\Model\Goods\GoodBean;
 use Application\Model\Goods\Goods;
 use Application\Util\Pool\MysqlObject;
 use Application\Util\Pool\MysqlPool;
+use Application\Util\Pool\RedisPool;
+use Application\Util\Redis\RedisUtil;
+use EasySwoole\Component\Pool\PoolManager;
 use EasySwoole\EasySwoole\Config;
+use EasySwoole\EasySwoole\Logger;
 use EasySwoole\Socket\AbstractInterface\Controller;
 use Illuminate\Encryption\Encrypter;
 
 
 class Chair extends Controller
 {
+
+    const NOT_RUNNING = "not_running";
+    const RUNNING = "running";
+
+    private $key;
+    private $cipher;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $key = Config::getInstance()->getConf('KEY');
+        $cipher = Config::getInstance()->getConf('CIPHER');
+        $this->key = $key;
+        $this->cipher = $cipher;
+
+    }
 
     function actionNotFound(?string $actionName)
     {
@@ -40,9 +60,91 @@ class Chair extends Controller
         if(!isset($param['deviceId'])) {
             $response['code'] = -1;
             $response['message'] = '设备ID不能为空';
-            $this->response()->setMessage(json_encode($response));
+            return $this->response()->setMessage(json_encode($response));
         }
+
         $deviceId = $param['deviceId'];
+        $data = $this->device($deviceId);
+        if (empty($data)) {
+            $response['code'] = -1;
+            $response['message'] = '设备不存在';
+            return $this->response()->setMessage(json_encode($response));
+        }
+
+        return $this->response()->setMessage($this->encrypt(json_encode($response)));
+    }
+
+    public function status()
+    {
+        $param = $this->caller()->getArgs();
+        if (!isset($param['deviceId'])) {
+            $response['code'] = -1;
+            $response['message'] = '设备ID不能为空';
+            return $this->response()->setMessage(json_encode($response));
+        }
+
+        $data = $this->device($param['deviceId']);
+        if (empty($data)) {
+            $response['code'] = -1;
+            $response['message'] = '设备不存在';
+            return $this->response()->setMessage(json_encode($response));
+        }
+
+        $redis = PoolManager::getInstance()->getPool(RedisPool::class)->getObj();
+        $redisUtil = new RedisUtil($redis);
+        if ($data->getEqStatus() == 0) {
+            $response['code'] = 1;
+            $response['message'] = '在线，未运行';
+            $redisUtil->sadd(static::NOT_RUNNING, $param['deviceId']);
+        } else if ($data->getEqStatus() == 1) {
+            $response['code'] = 2;
+            $response['message'] = '运行中';
+            $redisUtil->sadd(static::RUNNING, $param['deviceId']);
+        } else {
+            $response['code'] = -1;
+            $response['message'] = '设备离线';
+        }
+        // 销毁redis链接池
+        PoolManager::getInstance()->getPool(RedisPool::class)->recycleObj($redis);
+
+        return $this->response()->setMessage($this->encrypt(json_encode($response)));
+    }
+
+    public function stop()
+    {
+        $response = [
+            'code' => 1,
+            'message' => '设备停止成功',
+        ];
+        $param = $this->caller()->getArgs();
+        if(!isset($param['deviceId'])) {
+            $response['code'] = -1;
+            $response['message'] = '设备ID不能为空';
+            return $this->response()->setMessage(json_encode($response));
+        }
+
+        $deviceId = $param['deviceId'];
+        $data = $this->device($deviceId);
+        if (empty($data)) {
+            $response['code'] = -1;
+            $response['message'] = '设备不存在';
+            return $this->response()->setMessage(json_encode($response));
+        }
+
+        MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId) {
+            Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
+            $result = $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
+                'eq_status' => 0
+            ]);
+            return $result;
+        });
+
+        return $this->response()->setMessage($this->encrypt(json_encode($response)));
+
+    }
+
+    private function device($deviceId)
+    {
         $data = MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId){
             $good = new Goods($mysqlObject);
             //new 一个条件类,方便传入条件
@@ -52,32 +154,19 @@ class Chair extends Controller
             return $good->getOne($goodBean);
         });
 
-        if (empty($data)) {
-            $response['code'] = -1;
-            $response['message'] = '设备不存在';
-        }
-        return $this->response()->setMessage($this->encrypt(json_encode($response)));
-    }
-
-    public function test()
-    {
-        $response = [
-            'code' => 1,
-            'message' => '设备连接成功',
-            'data' => []
-        ];
-
-        return $this->response()->setMessage($this->encrypt(json_encode($response)));
-
+        return $data;
     }
 
     public function encrypt($string)
     {
-        $key = Config::getInstance()->getConf('KEY');
-        $cipher = Config::getInstance()->getConf('CIPHER');
-
-        $encrypter = new Encrypter($key, $cipher);
+        $encrypter = new Encrypter($this->key, $this->cipher);
         return $encrypter->encryptString($string);
+    }
+
+    public function decrypt($string)
+    {
+        $decrypt = new Encrypter($this->key, $this->cipher);
+        return $decrypt->decryptString($string);
     }
 
 }

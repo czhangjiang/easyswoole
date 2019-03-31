@@ -16,14 +16,14 @@ go(function () {
             'package_body_offset'   => 4,
         ]
     );
-    if (!$client->connect('120.24.50.248', 8888, 0.5)) {
+    if (!$client->connect('127.0.0.1', 8888, 0.5)) {
         exit("connect failed. Error: {$client->errCode}\n");
     }
     $data = [
         'controller' => 'Chair',
-        'action'     => 'start',
+        'action'     => 'stop',
         'param'      => [
-            'deviceId' => 'JS00431'
+            'deviceId' => 'JS004311'
         ],
     ];
     $str = json_encode($data);
@@ -35,7 +35,8 @@ go(function () {
     $data = $client->recv();//服务器已经做了pack处理
     $data = decode($data);//需要自己剪切解析数据
     echo "服务端回复: $data \n";
-    echo $encrypter->decryptString($data);
+    $data = $encrypter->decryptString($data);
+    print_r(json_decode($data));
 //    $client->close();
 });
 /**
