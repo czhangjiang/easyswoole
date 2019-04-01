@@ -51,7 +51,7 @@ class EasySwooleEvent implements Event
         $subPort->on('receive', function (\swoole_server $server, int $fd, int $reactor_id, string $data) use ($dispatch) {
             $log = [
                 'fd' => $fd,
-                '$reactor_id' => $reactor_id,
+                'reactor_id' => $reactor_id,
                 'data' => $data,
             ];
             Logger::getInstance()->log(json_encode($log));
@@ -59,7 +59,7 @@ class EasySwooleEvent implements Event
         });
         $subPort->set(
             [
-                'open_length_check'     => true,
+                'open_length_check'     => false,
                 'package_max_length'    => 81920,
                 'package_length_type'   => 'N',
                 'package_length_offset' => 0,
@@ -71,7 +71,7 @@ class EasySwooleEvent implements Event
         $register->add($register::onWorkerStart, function (\swoole_server $server, int $workerId) {
             if ($server->taskworker == false) {
                 //每个worker进程都预创建连接
-                PoolManager::getInstance()->getPool(MysqlPool::class)->preLoad(5);//最小创建数量
+                //PoolManager::getInstance()->getPool(MysqlPool::class)->preLoad(5);//最小创建数量
                 PoolManager::getInstance()->getPool(RedisPool::class)->preLoad(5);
             }
         });

@@ -9,7 +9,7 @@ go(function () {
     $client = new \Swoole\Client(SWOOLE_SOCK_TCP);
     $client->set(
         [
-            'open_length_check'     => true,
+            'open_length_check'     => false,
             'package_max_length'    => 81920,
             'package_length_type'   => 'N',
             'package_length_offset' => 0,
@@ -20,23 +20,24 @@ go(function () {
         exit("connect failed. Error: {$client->errCode}\n");
     }
     $data = [
-        'controller' => 'Chair',
-        'action'     => 'stop',
-        'param'      => [
-            'deviceId' => 'JS004311'
+        'action' => 'start',
+        'deviceId' => 'JS004311',
+        'param' => [
+
         ],
     ];
     $str = json_encode($data);
-    $key = '1234567891234567';
-    $cipher = 'AES-128-CBC';
-    $encrypter = new \Illuminate\Encryption\Encrypter($key, $cipher);
-    $str = $encrypter->encryptString($str);
+//    $key = '1234567891234567';
+//    $cipher = 'AES-128-CBC';
+//    $encrypter = new \Illuminate\Encryption\Encrypter($key, $cipher);
+//    $str = $encrypter->encryptString($str);
     $client->send(encode($str));
     $data = $client->recv();//服务器已经做了pack处理
-    $data = decode($data);//需要自己剪切解析数据
-    echo "服务端回复: $data \n";
-    $data = $encrypter->decryptString($data);
-    print_r(json_decode($data));
+    print_r($data);
+//    $data = decode($data);//需要自己剪切解析数据
+//    echo "服务端回复: $data \n";
+//    $data = $encrypter->decryptString($data);
+//    print_r(json_decode($data));
 //    $client->close();
 });
 /**

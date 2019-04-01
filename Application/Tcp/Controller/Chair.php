@@ -17,6 +17,7 @@ use Application\Util\Redis\RedisUtil;
 use EasySwoole\Component\Pool\PoolManager;
 use EasySwoole\EasySwoole\Config;
 use EasySwoole\EasySwoole\Logger;
+use EasySwoole\EasySwoole\ServerManager;
 use EasySwoole\Socket\AbstractInterface\Controller;
 use Illuminate\Encryption\Encrypter;
 
@@ -52,26 +53,29 @@ class Chair extends Controller
 
     public function start()
     {
-        $response = [
-            'code' => 1,
-            'message' => '设备连接成功',
-        ];
         $param = $this->caller()->getArgs();
-        if(!isset($param['deviceId'])) {
-            $response['code'] = -1;
-            $response['message'] = '设备ID不能为空';
-            return $this->response()->setMessage(json_encode($response));
-        }
 
         $deviceId = $param['deviceId'];
         $data = $this->device($deviceId);
-        if (empty($data)) {
-            $response['code'] = -1;
-            $response['message'] = '设备不存在';
-            return $this->response()->setMessage(json_encode($response));
-        }
 
-        return $this->response()->setMessage($this->encrypt(json_encode($response)));
+        $client = $this->caller()->getClient();
+        $fd = $client->getFd();
+
+        $redis = $this->redis();
+        $redis->set($fd, $param['deviceId']);
+        $redis->set($param['deviceId'], $fd);
+        $this->destoryRedis($redis);
+
+        $sendData = [
+            'action' => 'startResp',
+            'deviceId' => $param['deviceId'],
+            'param' => [
+                'code' => 1,
+                'message' => 'success'
+            ]
+        ];
+
+        ServerManager::getInstance()->getSwooleServer()->send($fd, json_encode($sendData));
     }
 
     public function status()
@@ -90,22 +94,21 @@ class Chair extends Controller
             return $this->response()->setMessage(json_encode($response));
         }
 
-        $redis = PoolManager::getInstance()->getPool(RedisPool::class)->getObj();
-        $redisUtil = new RedisUtil($redis);
+        $redis = $this->redis();
         if ($data->getEqStatus() == 0) {
             $response['code'] = 1;
             $response['message'] = '在线，未运行';
-            $redisUtil->sadd(static::NOT_RUNNING, $param['deviceId']);
+            $redis->sadd(static::NOT_RUNNING, $param['deviceId']);
         } else if ($data->getEqStatus() == 1) {
             $response['code'] = 2;
             $response['message'] = '运行中';
-            $redisUtil->sadd(static::RUNNING, $param['deviceId']);
+            $redis->sadd(static::RUNNING, $param['deviceId']);
         } else {
             $response['code'] = -1;
             $response['message'] = '设备离线';
         }
         // 销毁redis链接池
-        PoolManager::getInstance()->getPool(RedisPool::class)->recycleObj($redis);
+        $this->destoryRedis($redis);
 
         return $this->response()->setMessage($this->encrypt(json_encode($response)));
     }
@@ -167,6 +170,18 @@ class Chair extends Controller
     {
         $decrypt = new Encrypter($this->key, $this->cipher);
         return $decrypt->decryptString($string);
+    }
+
+    public function redis()
+    {
+        $redis = PoolManager::getInstance()->getPool(RedisPool::class)->getObj();
+        $redisUtil = new RedisUtil($redis);
+        return $redisUtil;
+    }
+
+    public function destoryRedis($redis)
+    {
+        PoolManager::getInstance()->getPool(RedisPool::class)->recycleObj($redis);
     }
 
 }

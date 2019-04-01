@@ -9,6 +9,7 @@
 namespace Application\Tcp;
 
 
+use Application\Tcp\Controller\Chair;
 use EasySwoole\EasySwoole\Config;
 use EasySwoole\Socket\AbstractInterface\ParserInterface;
 use EasySwoole\Socket\Bean\Caller;
@@ -22,18 +23,19 @@ class Parse implements ParserInterface
     {
         $data = substr($raw, '4');
 
-        $key = Config::getInstance()->getConf('KEY');
-        $cipher = Config::getInstance()->getConf('CIPHER');
-        $encrypter = new Encrypter($key, $cipher);
-        $data = $encrypter->decryptString($data);
+//        $key = Config::getInstance()->getConf('KEY');
+//        $cipher = Config::getInstance()->getConf('CIPHER');
+//        $encrypter = new Encrypter($key, $cipher);
+//        $data = $encrypter->decryptString($data);
 
         //为了方便,我们将json字符串作为协议标准
         $data = json_decode($data, true);
         $bean = new Caller();
-        $controller = !empty($data['controller']) ? $data['controller'] : 'Index';
         $action = !empty($data['action']) ? $data['action'] : 'index';
         $param = !empty($data['param']) ? $data['param'] : [];
-        $controller = "Application\\Tcp\\Controller\\".ucfirst($controller);
+        $deviceId = !empty($data['deviceId']) ? $data['deviceId'] : '';
+        $param['deviceId'] = $deviceId;
+        $controller = 'Application\Tcp\Controller\Chair';
         $bean->setControllerClass($controller);
         $bean->setAction($action);
         $bean->setArgs($param);
