@@ -8,10 +8,12 @@
 
 namespace EasySwoole\EasySwoole;
 
+use Application\Task\DeviceTask;
 use Application\Tcp\Parse;
 use Application\Util\Pool\MysqlPool;
 use Application\Util\Pool\RedisPool;
 use EasySwoole\Component\Pool\PoolManager;
+use EasySwoole\Component\Timer;
 use EasySwoole\EasySwoole\Swoole\EventRegister;
 use EasySwoole\EasySwoole\AbstractInterface\Event;
 use EasySwoole\Http\Request;
@@ -59,11 +61,13 @@ class EasySwooleEvent implements Event
         });
         $subPort->set(
             [
-                'open_length_check'     => false,
+                'open_length_check'     => true,
                 'package_max_length'    => 81920,
                 'package_length_type'   => 'N',
                 'package_length_offset' => 0,
                 'package_body_offset'   => 4,
+                'heartbeat_check_interval' => 5,
+                'heartbeat_idle_time'      => 30,
             ]
         );
 
@@ -71,8 +75,18 @@ class EasySwooleEvent implements Event
         $register->add($register::onWorkerStart, function (\swoole_server $server, int $workerId) {
             if ($server->taskworker == false) {
                 //每个worker进程都预创建连接
-                //PoolManager::getInstance()->getPool(MysqlPool::class)->preLoad(5);//最小创建数量
-                PoolManager::getInstance()->getPool(RedisPool::class)->preLoad(5);
+                PoolManager::getInstance()->getPool(MysqlPool::class)->preLoad(5);//最小创建数量
+                //PoolManager::getInstance()->getPool(RedisPool::class)->preLoad(5);
+
+                Timer::getInstance()->loop(30 * 1000, function () {
+                    $task = new DeviceTask();
+                    $task->handle(1);
+                });
+
+                Timer::getInstance()->loop(30 * 60 * 60 * 100, function () {
+                    $task = new DeviceTask();
+                    $task->handle(0);
+                });
             }
         });
 

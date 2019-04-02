@@ -25,9 +25,6 @@ use Illuminate\Encryption\Encrypter;
 class Chair extends Controller
 {
 
-    const NOT_RUNNING = "not_running";
-    const RUNNING = "running";
-
     private $key;
     private $cipher;
 
@@ -43,12 +40,12 @@ class Chair extends Controller
 
     function actionNotFound(?string $actionName)
     {
-        $this->response()->setMessage("{$actionName} not found \n");
+        return $this->response()->setMessage("{$actionName} not found \n");
     }
 
     public function index()
     {
-        $this->response()->setMessage(time());
+        return $this->response()->setMessage(time());
     }
 
     public function start()
@@ -57,14 +54,28 @@ class Chair extends Controller
 
         $deviceId = $param['deviceId'];
         $data = $this->device($deviceId);
-
         $client = $this->caller()->getClient();
         $fd = $client->getFd();
+        if (empty($data)) {
+            $sendData = [
+                'action' => 'startResp',
+                'deviceId' => $param['deviceId'],
+                'param' => [
+                    'code' => -1,
+                    'message' => 'device not exits'
+                ]
+            ];
+            return ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
+        }
 
-        $redis = $this->redis();
-        $redis->set($fd, $param['deviceId']);
-        $redis->set($param['deviceId'], $fd);
-        $this->destoryRedis($redis);
+
+        MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId, $fd) {
+            Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
+            $result = $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
+                'meid' => $fd
+            ]);
+            return $result;
+        });
 
         $sendData = [
             'action' => 'startResp',
@@ -75,42 +86,82 @@ class Chair extends Controller
             ]
         ];
 
-        ServerManager::getInstance()->getSwooleServer()->send($fd, json_encode($sendData));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
     }
 
-    public function status()
+    public function statusResp()
+    {
+        $client = $this->caller()->getClient();
+        $fd = $client->getFd();
+        $param = $this->caller()->getArgs();
+        $data = $this->device($param['deviceId']);
+        if ($data['eq_status'] == 0 ) {
+            $code = 2;
+        } else {
+            $code = 1;
+        }
+
+        $sendData = [
+            'action' => 'startResp',
+            'deviceId' => $param['deviceId'],
+            'param' => [
+                'code' => $code,
+                'message' => 'success'
+            ]
+        ];
+
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
+    }
+
+    public function workResp()
+    {
+        $client = $this->caller()->getClient();
+        $fd = $client->getFd();
+        $param = $this->caller()->getArgs();
+        $data = $this->device($param['deviceId']);
+        if ($data['eq_status'] == 0 ) {
+            $code = 2;
+        } else {
+            $code = 1;
+        }
+
+        $sendData = [
+            'action' => 'startResp',
+            'deviceId' => $param['deviceId'],
+            'param' => [
+                'code' => $code,
+                'message' => 'success'
+            ]
+        ];
+
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
+    }
+
+
+    public function startWork()
     {
         $param = $this->caller()->getArgs();
-        if (!isset($param['deviceId'])) {
-            $response['code'] = -1;
-            $response['message'] = '设备ID不能为空';
-            return $this->response()->setMessage(json_encode($response));
-        }
-
         $data = $this->device($param['deviceId']);
         if (empty($data)) {
-            $response['code'] = -1;
-            $response['message'] = '设备不存在';
-            return $this->response()->setMessage(json_encode($response));
+            return $this->response()->setMessage(json_encode([
+                'code' => -1,
+                'message' => '没有此设备'
+            ]));
         }
 
-        $redis = $this->redis();
-        if ($data->getEqStatus() == 0) {
-            $response['code'] = 1;
-            $response['message'] = '在线，未运行';
-            $redis->sadd(static::NOT_RUNNING, $param['deviceId']);
-        } else if ($data->getEqStatus() == 1) {
-            $response['code'] = 2;
-            $response['message'] = '运行中';
-            $redis->sadd(static::RUNNING, $param['deviceId']);
-        } else {
-            $response['code'] = -1;
-            $response['message'] = '设备离线';
-        }
-        // 销毁redis链接池
-        $this->destoryRedis($redis);
-
-        return $this->response()->setMessage($this->encrypt(json_encode($response)));
+        $fd = $data['meid'];
+        $sendData = [
+            'action' => 'start',
+            'deviceId' => $param['deviceId'],
+            'param' => [
+                'time' => time()
+            ]
+        ];
+        ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
+        return $this->response()->setMessage(json_encode([
+            'code' => 1,
+            'message' => 'success'
+        ]));
     }
 
     public function stop()
@@ -120,6 +171,8 @@ class Chair extends Controller
             'message' => '设备停止成功',
         ];
         $param = $this->caller()->getArgs();
+        $client = $this->caller()->getClient();
+        $fd = $client->getFd();
         if(!isset($param['deviceId'])) {
             $response['code'] = -1;
             $response['message'] = '设备ID不能为空';
@@ -142,7 +195,15 @@ class Chair extends Controller
             return $result;
         });
 
-        return $this->response()->setMessage($this->encrypt(json_encode($response)));
+        $sendData = [
+            'action' => 'stopResp',
+            'deviceId' => $param['deviceId'],
+            'param' => [
+                'code' => 1,
+                'message' => 'success'
+            ]
+        ];
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendData);
 
     }
 

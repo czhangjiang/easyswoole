@@ -27,18 +27,18 @@ go(function () {
         ],
     ];
     $str = json_encode($data);
-//    $key = '1234567891234567';
-//    $cipher = 'AES-128-CBC';
-//    $encrypter = new \Illuminate\Encryption\Encrypter($key, $cipher);
-//    $str = $encrypter->encryptString($str);
+    $key = '1234567891234567';
+    $cipher = 'AES-128-CBC';
+    $encrypter = new \Illuminate\Encryption\Encrypter($key, $cipher);
+    $str = $encrypter->encryptString($str);
     $client->send(encode($str));
     $data = $client->recv();//服务器已经做了pack处理
     print_r($data);
-//    $data = decode($data);//需要自己剪切解析数据
-//    echo "服务端回复: $data \n";
-//    $data = $encrypter->decryptString($data);
-//    print_r(json_decode($data));
-//    $client->close();
+    $data = decode($data);//需要自己剪切解析数据
+    echo "服务端回复: $data \n";
+    $data = $encrypter->decryptString($data);
+    print_r(json_decode($data));
+    $client->close();
 });
 /**
  * 数据包 pack处理

@@ -23,10 +23,10 @@ class Parse implements ParserInterface
     {
         $data = substr($raw, '4');
 
-//        $key = Config::getInstance()->getConf('KEY');
-//        $cipher = Config::getInstance()->getConf('CIPHER');
-//        $encrypter = new Encrypter($key, $cipher);
-//        $data = $encrypter->decryptString($data);
+        $key = Config::getInstance()->getConf('KEY');
+        $cipher = Config::getInstance()->getConf('CIPHER');
+        $encrypter = new Encrypter($key, $cipher);
+        $data = $encrypter->decryptString($data);
 
         //为了方便,我们将json字符串作为协议标准
         $data = json_decode($data, true);
