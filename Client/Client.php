@@ -27,8 +27,9 @@ go(function () {
     $str = json_encode($data);
     $key = '1234567891234567';
     $cipher = 'AES-128-CBC';
-//    $encrypter = new \Illuminate\Encryption\Encrypter($key, $cipher);
-//    $str = $encrypter->encryptString($str);
+    $encrypter = new \Illuminate\Encryption\Encrypter($key, $cipher);
+    $str = $encrypter->encryptString($str);
+    echo encode($str);exit;
     $client->send(encode($str));
     $data = $client->recv();//服务器已经做了pack处理
     echo $data . PHP_EOL;
