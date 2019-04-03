@@ -22,8 +22,9 @@ class Parse implements ParserInterface
 
     public function decode($raw, $client): ?Caller
     {
-        $data = substr($raw, '4');
-        Logger::getInstance()->log($data);
+        //$data = substr($raw, '4');
+        //Logger::getInstance()->log($data);
+        $data = $raw;
 
 //        $key = Config::getInstance()->getConf('KEY');
 //        $cipher = Config::getInstance()->getConf('CIPHER');
