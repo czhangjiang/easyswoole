@@ -33,8 +33,9 @@ class DeviceTask
                     'deviceId' => $value['goods_sn'],
                     'param' => []
                 ];
-                $str = $this->encode($this->encrypt(json_encode($data)));
-                ServerManager::getInstance()->getSwooleServer()->send($fd, $str);
+                //$sendStr = $this->encode($this->encrypt(json_encode($data)));
+                $sendStr = $this->encode(json_encode($data));
+                ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
             }
         }
         PoolManager::getInstance()->getPool(MysqlPool::class)->recycleObj($db);

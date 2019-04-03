@@ -6,7 +6,7 @@ define('EASYSWOOLE_ROOT', realpath(dirname(getcwd())));
  * tcp 客户端3,验证数据包处理粘包 以及转发到控制器写法
  */
 go(function () {
-    $client = new \Swoole\Client(SWOOLE_SOCK_TCP);
+    $client = new \Swoole\Client(SWOOLE_SOCK_TCP | SWOOLE_KEEP);
     $client->set(
         [
             'open_length_check'     => false,
@@ -22,23 +22,21 @@ go(function () {
     $data = [
         'action' => 'start',
         'deviceId' => 'JS004311',
-        'param' => [
-
-        ],
+        'param' => [],
     ];
     $str = json_encode($data);
     $key = '1234567891234567';
     $cipher = 'AES-128-CBC';
-    $encrypter = new \Illuminate\Encryption\Encrypter($key, $cipher);
-    $str = $encrypter->encryptString($str);
+//    $encrypter = new \Illuminate\Encryption\Encrypter($key, $cipher);
+//    $str = $encrypter->encryptString($str);
     $client->send(encode($str));
     $data = $client->recv();//服务器已经做了pack处理
-    print_r($data);
+    echo $data . PHP_EOL;
     $data = decode($data);//需要自己剪切解析数据
-    echo "服务端回复: $data \n";
-    $data = $encrypter->decryptString($data);
-    print_r(json_decode($data));
-    $client->close();
+    echo "服务端回复: $data" . PHP_EOL;
+//    $data = $encrypter->decryptString($data);
+    print_r(json_decode($data, true));
+//    $client->close();
 });
 /**
  * 数据包 pack处理

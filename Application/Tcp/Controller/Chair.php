@@ -58,10 +58,10 @@ class Chair extends Controller
                 'deviceId' => $param['deviceId'],
                 'param' => [
                     'code' => -1,
-                    'message' => 'device not exits'
                 ]
             ];
-            $sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+            //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+            $sendStr = $this->encode(json_encode($sendData));
             return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
         }
 
@@ -78,10 +78,10 @@ class Chair extends Controller
             'deviceId' => $param['deviceId'],
             'param' => [
                 'code' => 1,
-                'message' => 'success'
             ]
         ];
-        $sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        $sendStr = $this->encode(json_encode($sendData));
         return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
@@ -102,11 +102,11 @@ class Chair extends Controller
             'deviceId' => $param['deviceId'],
             'param' => [
                 'code' => $code,
-                'message' => 'success'
             ]
         ];
-        $str = $this->encode($this->encrypt(json_encode($sendData)));
-        return ServerManager::getInstance()->getSwooleServer()->send($fd, $str);
+        //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        $sendStr = $this->encode(json_encode($sendData));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
     public function workResp()
@@ -129,8 +129,9 @@ class Chair extends Controller
                 'message' => 'success'
             ]
         ];
-        $str = $this->encode($this->encrypt(json_encode($sendData)));
-        return ServerManager::getInstance()->getSwooleServer()->send($fd, $str);
+        //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        $sendStr = $this->encode(json_encode($sendData));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
 
@@ -150,8 +151,9 @@ class Chair extends Controller
                 'time' => time()
             ]
         ];
-        $str = $this->encode($this->encrypt(json_encode($sendData)));
-        ServerManager::getInstance()->getSwooleServer()->send($fd, $str);
+        //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        $sendStr = $this->encode(json_encode($sendData));
+        ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
         return $this->response()->setMessage(json_encode(['code' => 1, 'message' => 'success']));
     }
 
@@ -194,8 +196,9 @@ class Chair extends Controller
                 'message' => 'success'
             ]
         ];
-        $str = $this->encode($this->encrypt(json_encode($sendData)));
-        return ServerManager::getInstance()->getSwooleServer()->send($fd, $str);
+        //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        $sendStr = $this->encode(json_encode($sendData));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
 
     }
 
