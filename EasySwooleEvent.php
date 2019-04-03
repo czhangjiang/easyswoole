@@ -66,8 +66,8 @@ class EasySwooleEvent implements Event
                 'package_length_type'   => 'N',
                 'package_length_offset' => 0,
                 'package_body_offset'   => 4,
-                'heartbeat_check_interval' => 5,
-                'heartbeat_idle_time'      => 30,
+//                'heartbeat_check_interval' => 5,
+//                'heartbeat_idle_time'      => 30,
             ]
         );
 
@@ -83,7 +83,7 @@ class EasySwooleEvent implements Event
                     $task->handle(1);
                 });
 
-                Timer::getInstance()->loop(30 * 60 * 60 * 100, function () {
+                Timer::getInstance()->loop(30 * 60 * 60 * 1000, function () {
                     $task = new DeviceTask();
                     $task->handle(0);
                 });
