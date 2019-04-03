@@ -12,15 +12,11 @@ use Application\Model\Goods\GoodBean;
 use Application\Model\Goods\Goods;
 use Application\Util\Pool\MysqlObject;
 use Application\Util\Pool\MysqlPool;
-use Application\Util\Pool\RedisPool;
-use Application\Util\Redis\RedisUtil;
-use EasySwoole\Component\Pool\PoolManager;
 use EasySwoole\EasySwoole\Config;
 use EasySwoole\EasySwoole\Logger;
 use EasySwoole\EasySwoole\ServerManager;
 use EasySwoole\Socket\AbstractInterface\Controller;
 use Illuminate\Encryption\Encrypter;
-
 
 class Chair extends Controller
 {
@@ -65,9 +61,9 @@ class Chair extends Controller
                     'message' => 'device not exits'
                 ]
             ];
-            return ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
+            $sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+            return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
         }
-
 
         MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId, $fd) {
             Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
@@ -85,8 +81,8 @@ class Chair extends Controller
                 'message' => 'success'
             ]
         ];
-
-        return ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
+        $sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
     public function statusResp()
@@ -95,7 +91,7 @@ class Chair extends Controller
         $fd = $client->getFd();
         $param = $this->caller()->getArgs();
         $data = $this->device($param['deviceId']);
-        if ($data['eq_status'] == 0 ) {
+        if ($data['eq_status'] == 0) {
             $code = 2;
         } else {
             $code = 1;
@@ -109,8 +105,8 @@ class Chair extends Controller
                 'message' => 'success'
             ]
         ];
-
-        return ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
+        $str = $this->encode($this->encrypt(json_encode($sendData)));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $str);
     }
 
     public function workResp()
@@ -133,8 +129,8 @@ class Chair extends Controller
                 'message' => 'success'
             ]
         ];
-
-        return ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
+        $str = $this->encode($this->encrypt(json_encode($sendData)));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $str);
     }
 
 
@@ -143,10 +139,7 @@ class Chair extends Controller
         $param = $this->caller()->getArgs();
         $data = $this->device($param['deviceId']);
         if (empty($data)) {
-            return $this->response()->setMessage(json_encode([
-                'code' => -1,
-                'message' => '没有此设备'
-            ]));
+            return $this->response()->setMessage(json_encode(['code' => -1, 'message' => '没有此设备']));
         }
 
         $fd = $data['meid'];
@@ -157,11 +150,9 @@ class Chair extends Controller
                 'time' => time()
             ]
         ];
-        ServerManager::getInstance()->getSwooleServer()->send($fd, $this->encrypt(json_encode($sendData)));
-        return $this->response()->setMessage(json_encode([
-            'code' => 1,
-            'message' => 'success'
-        ]));
+        $str = $this->encode($this->encrypt(json_encode($sendData)));
+        ServerManager::getInstance()->getSwooleServer()->send($fd, $str);
+        return $this->response()->setMessage(json_encode(['code' => 1, 'message' => 'success']));
     }
 
     public function stop()
@@ -203,7 +194,8 @@ class Chair extends Controller
                 'message' => 'success'
             ]
         ];
-        return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendData);
+        $str = $this->encode($this->encrypt(json_encode($sendData)));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $str);
 
     }
 
@@ -233,16 +225,8 @@ class Chair extends Controller
         return $decrypt->decryptString($string);
     }
 
-    public function redis()
+    public function encode($str)
     {
-        $redis = PoolManager::getInstance()->getPool(RedisPool::class)->getObj();
-        $redisUtil = new RedisUtil($redis);
-        return $redisUtil;
+        return pack('N', strlen($str)) . $str;
     }
-
-    public function destoryRedis($redis)
-    {
-        PoolManager::getInstance()->getPool(RedisPool::class)->recycleObj($redis);
-    }
-
 }
