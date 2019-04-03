@@ -15,6 +15,7 @@ use EasySwoole\Socket\AbstractInterface\ParserInterface;
 use EasySwoole\Socket\Bean\Caller;
 use EasySwoole\Socket\Bean\Response;
 use Illuminate\Encryption\Encrypter;
+use EasySwoole\EasySwoole\Logger;
 
 class Parse implements ParserInterface
 {
@@ -22,6 +23,7 @@ class Parse implements ParserInterface
     public function decode($raw, $client): ?Caller
     {
         $data = substr($raw, '4');
+        Logger::getInstance()->log($data);
 
 //        $key = Config::getInstance()->getConf('KEY');
 //        $cipher = Config::getInstance()->getConf('CIPHER');
