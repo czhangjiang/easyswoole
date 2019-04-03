@@ -11,6 +11,7 @@ namespace Application\Task;
 use Application\Util\Pool\MysqlPool;
 use EasySwoole\Component\Pool\PoolManager;
 use EasySwoole\EasySwoole\Config;
+use EasySwoole\EasySwoole\Logger;
 use EasySwoole\EasySwoole\ServerManager;
 use Illuminate\Encryption\Encrypter;
 
@@ -26,18 +27,26 @@ class DeviceTask
         $db->where('eq_status', $eqStatus);
         $data = $db->get('lz_goods');
         foreach ($data as $value) {
-            $fd = $value['meid'];
-            if ($fd) {
-                $data = [
-                    'action' => 'status',
-                    'deviceId' => $value['goods_sn'],
-                    'param' => []
-                ];
-                //$sendStr = $this->encode($this->encrypt(json_encode($data)));
-                $sendStr = $this->encode(json_encode($data));
-                ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
+            try {
+                $fd = $value['meid'];
+                if ($fd) {
+                    $data = [
+                        'action' => 'status',
+                        'deviceId' => $value['goods_sn'],
+                        'param' => []
+                    ];
+                    //$sendStr = $this->encode($this->encrypt(json_encode($data)));
+                    $sendStr = $this->encode(json_encode($data));
+                    ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
+                }
+            } catch (\Exception $e) {
+                Logger::getInstance()->log($e->getMessage());
+                $db->where('fd', $fd)->update(['meid' => '', 'status' => 0]);
+                ServerManager::getInstance()->getSwooleServer()->close($fd);
             }
+
         }
+
         PoolManager::getInstance()->getPool(MysqlPool::class)->recycleObj($db);
     }
 

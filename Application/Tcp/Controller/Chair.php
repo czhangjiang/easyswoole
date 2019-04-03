@@ -109,24 +109,21 @@ class Chair extends Controller
         return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
-    public function workResp()
+    public function work()
     {
-        $client = $this->caller()->getClient();
-        $fd = $client->getFd();
         $param = $this->caller()->getArgs();
         $data = $this->device($param['deviceId']);
-        if ($data['eq_status'] == 0 ) {
-            $code = 2;
-        } else {
-            $code = 1;
+        if ($data['eq_status'] == 1) {
+            return $this->response()->setMessage(json_encode(['code' => -1, 'message' => '设备已经在运行']));
         }
 
+        $fd = $data['meid'];
+        $time = $param['time'];
         $sendData = [
-            'action' => 'startResp',
+            'action' => 'work',
             'deviceId' => $param['deviceId'],
             'param' => [
-                'code' => $code,
-                'message' => 'success'
+                'time' => $time
             ]
         ];
         //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
@@ -134,28 +131,30 @@ class Chair extends Controller
         return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
-
-    public function startWork()
+    public function workResp()
     {
+        $client = $this->caller()->getClient();
+        $fd = $client->getFd();
         $param = $this->caller()->getArgs();
         $data = $this->device($param['deviceId']);
-        if (empty($data)) {
-            return $this->response()->setMessage(json_encode(['code' => -1, 'message' => '没有此设备']));
+        $deviceId = $param['deviceId'];
+        $code = $param['code'];
+        if ($code == 1) {
+            $eqStatus = 1;
+        } else {
+            $eqStatus = 2;
         }
 
-        $fd = $data['meid'];
-        $sendData = [
-            'action' => 'start',
-            'deviceId' => $param['deviceId'],
-            'param' => [
-                'time' => time()
-            ]
-        ];
-        //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
-        $sendStr = $this->encode(json_encode($sendData));
-        ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
-        return $this->response()->setMessage(json_encode(['code' => 1, 'message' => 'success']));
+        MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId, $eqStatus) {
+            Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
+            $result = $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
+                'eq_status' => $eqStatus
+            ]);
+            return $result;
+        });
     }
+
+
 
     public function stop()
     {
@@ -193,13 +192,11 @@ class Chair extends Controller
             'deviceId' => $param['deviceId'],
             'param' => [
                 'code' => 1,
-                'message' => 'success'
             ]
         ];
         //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
         $sendStr = $this->encode(json_encode($sendData));
         return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
-
     }
 
     private function device($deviceId)
