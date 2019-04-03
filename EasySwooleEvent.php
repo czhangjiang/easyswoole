@@ -27,13 +27,12 @@ class EasySwooleEvent implements Event
         // TODO: Implement initialize() method.
         date_default_timezone_set('Asia/Shanghai');
         PoolManager::getInstance()->register(MysqlPool::class, Config::getInstance()->getConf('MYSQL.POOL_MAX_NUM'));
-        PoolManager::getInstance()->register(RedisPool::class, Config::getInstance()->getConf('REDIS.POOL_MAX_NUM'));
+        //PoolManager::getInstance()->register(RedisPool::class, Config::getInstance()->getConf('REDIS.POOL_MAX_NUM'));
     }
 
     public static function mainServerCreate(EventRegister $register)
     {
         $server = ServerManager::getInstance()->getSwooleServer();
-
         $subPort = $server->addListener(Config::getInstance()->getConf('MAIN_SERVER.LISTEN_ADDRESS'), 8888, SWOOLE_TCP);
         $socketConfig = new \EasySwoole\Socket\Config();
         $socketConfig->setType($socketConfig::TCP);
@@ -61,7 +60,7 @@ class EasySwooleEvent implements Event
         });
         $subPort->set(
             [
-                'open_length_check'     => true,
+                'open_length_check'     => false,
                 'package_max_length'    => 81920,
                 'package_length_type'   => 'N',
                 'package_length_offset' => 0,
@@ -73,7 +72,7 @@ class EasySwooleEvent implements Event
 
         ################### mysql 热启动   #######################
         $register->add($register::onWorkerStart, function (\swoole_server $server, int $workerId) {
-            if ($server->taskworker == false) {
+            if ($workerId == 0) {
                 //每个worker进程都预创建连接
                 PoolManager::getInstance()->getPool(MysqlPool::class)->preLoad(5);//最小创建数量
                 //PoolManager::getInstance()->getPool(RedisPool::class)->preLoad(5);
