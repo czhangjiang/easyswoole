@@ -33,7 +33,7 @@ class Parse implements ParserInterface
         $data = json_decode($data, true);
         $bean = new Caller();
         $action = !empty($data['action']) ? $data['action'] : 'index';
-        $param = !empty($data['param']) ? $data['param'] : [];
+        $param = !empty($data['params']) ? $data['params'] : [];
         $deviceId = !empty($data['deviceId']) ? $data['deviceId'] : '';
         $param['deviceId'] = $deviceId;
         $controller = 'Application\Tcp\Controller\Chair';

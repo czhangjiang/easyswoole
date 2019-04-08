@@ -91,32 +91,32 @@ class Chair extends Controller
         $fd = $client->getFd();
         $param = $this->caller()->getArgs();
         $data = $this->device($param['deviceId']);
-        if ($data['eq_status'] == 0) {
-            $code = 2;
-        } else {
-            $code = 1;
-        }
+        // if ($data['eq_status'] == 0) {
+        //     $code = 2;
+        // } else {
+        //     $code = 1;
+        // }
 
-        $sendData = [
-            'action' => 'startResp',
-            'deviceId' => $param['deviceId'],
-            'param' => [
-                'code' => $code,
-            ]
-        ];
-        //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
-        $sendStr = $this->encode(json_encode($sendData));
-        return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
+        // $sendData = [
+        //     'action' => 'startResp',
+        //     'deviceId' => $param['deviceId'],
+        //     'param' => [
+        //         'code' => $code,
+        //     ]
+        // ];
+        // //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        // $sendStr = $this->encode(json_encode($sendData));
+        // return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
     public function work()
     {
         $param = $this->caller()->getArgs();
         $data = $this->device($param['deviceId']);
+        $data = $data->toArray();
         if ($data['eq_status'] == 1) {
             return $this->response()->setMessage(json_encode(['code' => -1, 'message' => '设备已经在运行']));
         }
-
         $fd = $data['meid'];
         $time = $param['time'];
         $sendData = [
@@ -142,7 +142,7 @@ class Chair extends Controller
         if ($code == 1) {
             $eqStatus = 1;
         } else {
-            $eqStatus = 2;
+            $eqStatus = 0;
         }
 
         MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId, $eqStatus) {
@@ -209,7 +209,6 @@ class Chair extends Controller
 
             return $good->getOne($goodBean);
         });
-
         return $data;
     }
 
