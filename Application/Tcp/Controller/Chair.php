@@ -44,6 +44,14 @@ class Chair extends Controller
         return $this->response()->setMessage(time());
     }
 
+    /**
+     * 设备通知云端服务开启，云端返回给设备开启
+     *
+     * @return bool|mixed
+     * @throws \EasySwoole\Component\Pool\Exception\PoolEmpty
+     * @throws \EasySwoole\Component\Pool\Exception\PoolException
+     * @throws \Throwable
+     */
     public function start()
     {
         $param = $this->caller()->getArgs();
@@ -67,10 +75,10 @@ class Chair extends Controller
 
         MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId, $fd) {
             Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
-            $result = $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
+            $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
                 'meid' => $fd
             ]);
-            return $result;
+            Logger::getInstance()->log(json_encode($mysqlObject->getLastQuery()));
         });
 
         $sendData = [
@@ -85,30 +93,25 @@ class Chair extends Controller
         return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
+    /**
+     * 设备通知监控云端的心跳
+     */
     public function statusResp()
     {
         $client = $this->caller()->getClient();
         $fd = $client->getFd();
         $param = $this->caller()->getArgs();
         $data = $this->device($param['deviceId']);
-        // if ($data['eq_status'] == 0) {
-        //     $code = 2;
-        // } else {
-        //     $code = 1;
-        // }
-
-        // $sendData = [
-        //     'action' => 'startResp',
-        //     'deviceId' => $param['deviceId'],
-        //     'param' => [
-        //         'code' => $code,
-        //     ]
-        // ];
-        // //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
-        // $sendStr = $this->encode(json_encode($sendData));
-        // return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
+    /**
+     * 微信通知云端，云端通知设备开始工作
+     *
+     * @return bool|mixed|void
+     * @throws \EasySwoole\Component\Pool\Exception\PoolEmpty
+     * @throws \EasySwoole\Component\Pool\Exception\PoolException
+     * @throws \Throwable
+     */
     public function work()
     {
         $param = $this->caller()->getArgs();
@@ -119,6 +122,14 @@ class Chair extends Controller
         }
         $fd = $data['meid'];
         $time = $param['time'];
+        $deviceId = $param['deviceId'];
+        MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId, $time) {
+            Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
+            $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
+                'time' => $time
+            ]);
+            Logger::getInstance()->log(json_encode($mysqlObject->getLastQuery()));
+        });
         $sendData = [
             'action' => 'work',
             'deviceId' => $param['deviceId'],
@@ -131,12 +142,17 @@ class Chair extends Controller
         return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
 
+    /**
+     * 设备通知云端工作状态
+     *
+     * @throws \EasySwoole\Component\Pool\Exception\PoolEmpty
+     * @throws \EasySwoole\Component\Pool\Exception\PoolException
+     * @throws \Throwable
+     */
     public function workResp()
     {
-        $client = $this->caller()->getClient();
-        $fd = $client->getFd();
         $param = $this->caller()->getArgs();
-        $data = $this->device($param['deviceId']);
+        $this->device($param['deviceId']);
         $deviceId = $param['deviceId'];
         $code = $param['code'];
         if ($code == 1) {
@@ -147,38 +163,26 @@ class Chair extends Controller
 
         MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId, $eqStatus) {
             Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
-            $result = $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
+            $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
                 'eq_status' => $eqStatus
             ]);
-            return $result;
+            Logger::getInstance()->log(json_encode($mysqlObject->getLastQuery()));
         });
     }
 
-
-
+    /**
+     * 设备通知云端停止
+     *
+     * @return bool|mixed|void
+     * @throws \EasySwoole\Component\Pool\Exception\PoolEmpty
+     * @throws \EasySwoole\Component\Pool\Exception\PoolException
+     * @throws \Throwable
+     */
     public function stop()
     {
-        $response = [
-            'code' => 1,
-            'message' => '设备停止成功',
-        ];
         $param = $this->caller()->getArgs();
-        $client = $this->caller()->getClient();
-        $fd = $client->getFd();
-        if(!isset($param['deviceId'])) {
-            $response['code'] = -1;
-            $response['message'] = '设备ID不能为空';
-            return $this->response()->setMessage(json_encode($response));
-        }
-
         $deviceId = $param['deviceId'];
-        $data = $this->device($deviceId);
-        if (empty($data)) {
-            $response['code'] = -1;
-            $response['message'] = '设备不存在';
-            return $this->response()->setMessage(json_encode($response));
-        }
-
+        $data = $this->device($deviceId)->toArray();
         MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId) {
             Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
             $result = $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
@@ -186,7 +190,6 @@ class Chair extends Controller
             ]);
             return $result;
         });
-
         $sendData = [
             'action' => 'stopResp',
             'deviceId' => $param['deviceId'],
@@ -194,10 +197,109 @@ class Chair extends Controller
                 'code' => 1,
             ]
         ];
+        $fd = $data['meid'];
         //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
         $sendStr = $this->encode(json_encode($sendData));
         return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
     }
+
+    /**
+     * 微信通知云端，云端通知设备停止
+     *
+     * @return bool|mixed
+     */
+    public function wxStop()
+    {
+        $param = $this->caller()->getArgs();
+        $data = $this->device($param['deviceId']);
+        $fd = $data['meid'];
+        $sendData = [
+            'action' => 'stop',
+            'deviceId' => $param['deviceId'],
+            'param' => []
+        ];
+        //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        $sendStr = $this->encode(json_encode($sendData));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
+    }
+
+    /**
+     * 设备返回云端设备停止
+     *
+     * @throws \EasySwoole\Component\Pool\Exception\PoolEmpty
+     * @throws \EasySwoole\Component\Pool\Exception\PoolException
+     * @throws \Throwable
+     */
+    public function stopResp()
+    {
+        $param = $this->caller()->getArgs();
+        $this->device($param['deviceId']);
+        $deviceId = $param['deviceId'];
+        $code = $param['code'];
+        if ($code == 1) {
+            $eqStatus = 0;
+        } else {
+            $eqStatus = 1;
+        }
+
+        MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId, $eqStatus) {
+            Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
+            $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
+                'eq_status' => $eqStatus
+            ]);
+            Logger::getInstance()->log(json_encode($mysqlObject->getLastQuery()));
+        });
+    }
+
+    /**
+     * 微信通知云端设备暂停，云端通知设备暂停
+     *
+     * @return bool|mixed
+     */
+    public function wxPause()
+    {
+        $param = $this->caller()->getArgs();
+        $deviceId = $param['deviceId'];
+        $data = $this->device($deviceId);
+        $fd = $data['meid'];
+        $sendData = [
+            'action' => 'pause',
+            'deviceId' => $param['deviceId'],
+            'param' => []
+        ];
+        //$sendStr = $this->encode($this->encrypt(json_encode($sendData)));
+        $sendStr = $this->encode(json_encode($sendData));
+        return ServerManager::getInstance()->getSwooleServer()->send($fd, $sendStr);
+    }
+
+    /**
+     * 设备返回云端暂停状态
+     *
+     * @throws \EasySwoole\Component\Pool\Exception\PoolEmpty
+     * @throws \EasySwoole\Component\Pool\Exception\PoolException
+     * @throws \Throwable
+     */
+    public function pauseResp()
+    {
+        $param = $this->caller()->getArgs();
+        $this->device($param['deviceId']);
+        $deviceId = $param['deviceId'];
+        $code = $param['code'];
+        if ($code == 1) {
+            $eqStatus = 0;
+        } else {
+            $eqStatus = 1;
+        }
+
+        MysqlPool::invoke(function (MysqlObject $mysqlObject) use ($deviceId, $eqStatus) {
+            Logger::getInstance()->log(json_encode(['deviceId' => $deviceId]));
+            $mysqlObject->where('goods_sn', $deviceId)->update('lz_goods', [
+                'eq_status' => $eqStatus
+            ]);
+            Logger::getInstance()->log(json_encode($mysqlObject->getLastQuery()));
+        });
+    }
+
 
     private function device($deviceId)
     {
