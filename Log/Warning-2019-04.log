@@ -1,2 +1,0 @@
-[2019-04-03 12:06:58][Warning][file:/Users/zhangweitao/work/www/easyswoole/Client/Client.php][line:42]go(): Using Xdebug in coroutines is extremely dangerous, please notice that it may lead to coredump!
-[2019-04-03 12:07:13][Warning][file:/Users/zhangweitao/work/www/easyswoole/Client/Client.php][line:42]go(): Using Xdebug in coroutines is extremely dangerous, please notice that it may lead to coredump!

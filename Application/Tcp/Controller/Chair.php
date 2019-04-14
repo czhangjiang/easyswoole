@@ -211,7 +211,7 @@ class Chair extends Controller
     public function wxStop()
     {
         $param = $this->caller()->getArgs();
-        $data = $this->device($param['deviceId']);
+        $data = $this->device($param['deviceId'])->toArray();
         $fd = $data['meid'];
         $sendData = [
             'action' => 'stop',
@@ -260,7 +260,7 @@ class Chair extends Controller
     {
         $param = $this->caller()->getArgs();
         $deviceId = $param['deviceId'];
-        $data = $this->device($deviceId);
+        $data = $this->device($deviceId)->toArray();
         $fd = $data['meid'];
         $sendData = [
             'action' => 'pause',
